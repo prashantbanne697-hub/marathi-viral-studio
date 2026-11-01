@@ -36,7 +36,7 @@ def gemini(prompt):
     url="https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key="+key
     body={"contents":[{"parts":[{"text":prompt}]}],"generationConfig":{"temperature":0.7,"maxOutputTokens":2200}}
     req=urllib.request.Request(url,data=json.dumps(body).encode(),headers={"Content-Type":"application/json"},method="POST")
-    with urllib.request.urlopen(req,timeout=90) as r: result=json.loads(r.read().decode())
+    with urllib.request.urlopen(req,timeout=180) as r: result=json.loads(r.read().decode())
     return "".join(x.get("text","") for x in result["candidates"][0]["content"]["parts"]).strip()
 
 @app.get("/")
