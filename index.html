@@ -1,0 +1,58 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MARATHI VIRAL STUDIO — Master Control Room</title>
+<style>
+:root{--bg:#080f1e;--panel:#121f34;--line:#2b405e;--txt:#eef5ff;--muted:#a6b7d0;--cyan:#37e0cb;--violet:#8b9cff}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 85% 0,#1c3157 0,transparent 38%),var(--bg);color:var(--txt);font:15px Arial}
+header{padding:22px 4%;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+h1{margin:0;font-size:clamp(20px,4vw,30px);letter-spacing:1px}.sub{color:var(--cyan);font-size:11px;letter-spacing:2px;margin-top:7px}
+main{max-width:1200px;margin:auto;padding:20px 14px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:15px}
+.card{background:linear-gradient(145deg,#172943,#101a2c);border:1px solid var(--line);border-radius:15px;padding:17px;box-shadow:0 12px 30px #0005}
+h2{font-size:16px;margin:0 0 13px}.muted{color:var(--muted);font-size:13px}
+input,select,textarea{width:100%;padding:11px;margin:6px 0 10px;border:1px solid #395171;border-radius:8px;background:#091526;color:var(--txt)}
+button{border:0;border-radius:8px;padding:10px 13px;margin:4px 3px 4px 0;background:linear-gradient(90deg,var(--cyan),#8ae7d5);font-weight:bold;color:#071521;cursor:pointer}
+button.alt{background:linear-gradient(90deg,#8398ff,#c0a5ff)}button.warn{background:linear-gradient(90deg,#ffc46b,#ffe29a)}
+button:disabled{opacity:.5}.wide{width:100%}.pill{display:inline-block;border:1px solid #327e79;border-radius:20px;padding:4px 9px;color:var(--cyan);font-size:11px}
+pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#081321;border-radius:9px;padding:12px;max-height:280px;overflow:auto;font:13px/1.5 Arial}
+.item{padding:10px 0;border-top:1px solid var(--line);cursor:pointer}.item:first-child{border-top:0}
+#msg{color:var(--cyan);min-height:24px;padding:9px 0}.small{font-size:12px;color:var(--muted)}video{width:100%;max-height:420px;background:#000;border-radius:10px}
+</style></head><body>
+<header><div><h1>MARATHI VIRAL STUDIO</h1><div class="sub">ONE CLICK MASTER CONTROL ROOM • HUMAN APPROVAL REQUIRED</div></div><span class="pill">LOCAL WORKER • API CONNECTED WHEN CONFIGURED</span></header>
+<main>
+<div class="grid">
+<section class="card"><h2>＋ Create Production</h2><label class="muted">Topic</label><input id="topic" placeholder="उदा. Google Flow मध्ये Drone Out कसा करायचा?">
+<label class="muted">Audience</label><input id="audience" value="Marathi beginners">
+<label class="muted">Format</label><select id="format"><option>YouTube Short</option><option>Instagram Reel</option><option>3-minute tutorial</option></select>
+<button class="wide" onclick="createProject()">Create Project</button></section>
+<section class="card"><h2>🤖 AI Agent Control</h2><select id="project" onchange="showProject()"><option value="">Select project</option></select>
+<button onclick="agent('script')">① Script Agent</button><button class="alt" onclick="agent('scenes')">② Scene Agent</button><button onclick="agent('caption')">③ Caption Agent</button>
+<div class="small">Gemini API key required. Run in sequence.</div></section>
+<section class="card"><h2>🔍 Topic Research Agent</h2><input id="niche" value="Google Flow, AI video, Marathi tutorials"><input id="count" type="number" value="8" min="1" max="20">
+<button class="wide alt" onclick="research()">Research Topics</button><div id="topics" class="small">Topic suggestions appear here.</div></section>
+<section class="card"><h2>📊 YouTube Analytics Agent</h2><input id="channel" placeholder="YouTube Channel ID">
+<button class="wide" onclick="analytics()">Analyze Public Channel Data</button><div id="analyticsOut" class="small">Public views, likes and comments report.</div></section>
+</div>
+<section class="card" style="margin-top:15px"><h2>🎬 Production Workspace</h2><div id="msg">Select or create a project.</div><div id="workspace" class="muted">No project selected.</div>
+<div style="margin-top:12px"><button class="warn" onclick="approve(true)">Approve Production</button><button class="alt" onclick="approve(false)">Request Changes</button><button onclick="renderVideo()">Render Final Video</button><button onclick="upload()">Upload to YouTube</button></div>
+<div id="preview" style="margin-top:12px"></div></section>
+<section class="card" style="margin-top:15px"><h2>📁 Production History</h2><div id="history" class="muted">Loading...</div></section>
+<p class="small" style="text-align:center;margin:20px 0">Review all scripts, scenes and final video before publishing. Upload defaults to PRIVATE. API quotas and cloud/worker costs may apply.</p>
+</main>
+<script>
+let rows=[],active=null;
+async function api(path,body){let r=await fetch(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body||{})});let j=await r.json();if(!r.ok)throw Error(j.error||'Request failed');return j}
+function msg(t){document.getElementById('msg').textContent=t}
+function esc(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+async function refresh(){let r=await fetch('/api/projects');rows=await r.json();let sel=document.getElementById('project'),old=active||sel.value;sel.innerHTML='<option value="">Select project</option>'+rows.map(p=>`<option value="${p.id}">${esc(p.topic)} — ${p.id}</option>`).join('');if(old&&rows.some(p=>p.id===old))sel.value=old;showProject();document.getElementById('history').innerHTML=rows.length?rows.map(p=>`<div class="item" onclick="choose('${p.id}')"><b>${esc(p.topic)}</b> <span class="pill">${esc(p.status)}</span><div class="small">${p.id} • ${esc(p.created_at)}</div></div>`).join(''):'No projects yet.'}
+function choose(id){active=id;document.getElementById('project').value=id;showProject()}
+function showProject(){active=document.getElementById('project').value;let p=rows.find(x=>x.id===active);if(!p){document.getElementById('workspace').innerHTML='No project selected.';return}
+document.getElementById('workspace').innerHTML=`<b>${esc(p.topic)}</b> <span class="pill">${esc(p.status)}</span><div class="small">${p.id} • ${esc(p.format)} • Approval: ${p.approved?'YES':'NO'}</div><h3>Script</h3><pre>${esc(p.script||'Not generated')}</pre><h3>Scene prompts</h3><pre>${esc(p.scenes||'Not generated')}</pre><h3>Caption</h3><pre>${esc(p.caption||'Not generated')}</pre>`}
+async function createProject(){try{let p=await api('/api/projects',{topic:document.getElementById('topic').value,audience:document.getElementById('audience').value,format:document.getElementById('format').value});active=p.id;document.getElementById('topic').value='';await refresh();msg('Project saved: '+p.id)}catch(e){msg(e.message)}}
+async function agent(a){if(!active)return msg('Select project first.');try{msg(a+' agent running...');await api('/api/agent/'+a,{id:active});await refresh();msg(a+' agent completed.')}catch(e){msg(e.message)}}
+async function approve(v){if(!active)return msg('Select project first.');try{await api('/api/approve',{id:active,approved:v});await refresh();msg(v?'Production approved.':'Changes requested.')}catch(e){msg(e.message)}}
+async function renderVideo(){if(!active)return msg('Select project first.');try{msg('Rendering... Add scene clips in assets/ first.');let r=await api('/api/render',{id:active});document.getElementById('preview').innerHTML=`<video controls src="${r.video}"></video>`;await refresh();msg('Video ready. Review before upload.')}catch(e){msg(e.message)}}
+async function upload(){if(!active)return msg('Select project first.');try{let privacy=prompt('Upload privacy: private / unlisted / public','private')||'private';if(!['private','unlisted','public'].includes(privacy))return msg('Invalid privacy selection.');msg('YouTube upload starting...');let r=await api('/api/upload',{id:active,privacy});await refresh();msg('Upload finished. '+r.log)}catch(e){msg(e.message)}}
+async function research(){try{msg('Researching topics...');let r=await api('/api/topics',{niche:document.getElementById('niche').value,count:document.getElementById('count').value});document.getElementById('topics').innerHTML=r.ideas.map((x,i)=>`<div class="item"><b>${i+1}. ${esc(x.topic)}</b><div>${esc(x.hook)}</div><button onclick="useTopic('${encodeURIComponent(x.topic)}')">Use this topic</button></div>`).join('');msg('Topic research complete. Review suggestions.')}catch(e){msg(e.message)}}
+function useTopic(t){document.getElementById('topic').value=decodeURIComponent(t);window.scrollTo({top:0,behavior:'smooth'})}
+async function analytics(){try{msg('Reading public channel stats...');let r=await api('/api/analytics',{channel_id:document.getElementById('channel').value});document.getElementById('analyticsOut').innerHTML=`<b>${esc(r.report.channel)}</b><p>Subscribers: ${esc(r.report.subscriber_count)} • Channel views: ${esc(r.report.channel_views)} • Videos: ${r.report.video_count}</p><pre>${esc(JSON.stringify(r.report.top_5,null,2))}</pre>`;msg('Analytics report ready.')}catch(e){msg(e.message)}}
+refresh();
+</script></body></html>

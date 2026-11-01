@@ -1,0 +1,59 @@
+MARATHI VIRAL STUDIO — MASTER CONTROL ROOM
+============================================
+This bundle combines the Phase 2/3 worker scripts with one dashboard.
+
+WHAT WORKS IN THIS STARTER
+- Create and save production projects locally (JSON database).
+- Gemini Script, Scene and Caption agents.
+- Topic research agent (Gemini; optional YouTube Data API research).
+- Human approval / request-changes gate.
+- Video rendering from supplied scene clips via FFmpeg.
+- YouTube upload via OAuth; private by default.
+- Public YouTube channel/video statistics report.
+
+IMPORTANT
+This is an integrated local-worker starter, NOT a cloud deployment already running.
+A PC/VM must run the Flask app and have internet access. Apps Script cannot render video.
+For secure public/cloud hosting, deploy behind HTTPS and authentication, store secrets in
+a secret manager, and use a managed worker. Do not expose this Flask server to the internet
+as-is; it has no login/authentication layer.
+
+SETUP
+1. Install Python 3.10+ (Windows 7 may not support current Python/Flask; use a supported
+   Windows 10/11 PC or a Linux cloud VM).
+2. Install FFmpeg and add ffmpeg to PATH.
+3. Open terminal in this folder:
+   pip install -r requirements.txt
+4. Set Gemini API key:
+   Windows CMD: set GEMINI_API_KEY=YOUR_KEY
+   Linux/macOS: export GEMINI_API_KEY=YOUR_KEY
+5. Optional YouTube Data API key for topic research and public analytics:
+   set YOUTUBE_API_KEY=YOUR_KEY
+6. Start dashboard:
+   python app.py
+7. Open http://127.0.0.1:5000 in browser.
+
+YOUTUBE OAUTH
+1. Enable YouTube Data API v3 in Google Cloud.
+2. Create OAuth Client ID (Desktop app) and download JSON.
+3. Save as client_secret.json in this folder.
+4. Upload uses OAuth consent on first run and defaults to private.
+5. Do not share client_secret.json or token.pickle.
+
+VIDEO RENDERING
+- Put generated scene video clips in assets/ named 01.mp4, 02.mp4, 03.mp4...
+- Optional narration.mp3 and music.mp3 can also be placed in assets/.
+- Select a project, generate script/scenes/caption, review and click Approve.
+- Click Render Final Video. Result appears at output/final_short.mp4.
+- Review the complete video before uploading.
+
+TOPIC RESEARCH AND ANALYTICS
+- Topic Research requires GEMINI_API_KEY. Optional YouTube search requires YOUTUBE_API_KEY.
+- Analytics reports public stats only. Private watch time, retention, impressions and revenue
+  need YouTube Analytics API OAuth scope and a separate authorized integration.
+
+SAFETY / APPROVAL
+- Human approval is required before rendering and uploading.
+- Upload privacy selection is prompted; choose private for first tests.
+- AI suggestions are not guaranteed viral and must be checked for accuracy and rights.
+- API quotas, free-tier limits, and cloud worker costs may apply.
