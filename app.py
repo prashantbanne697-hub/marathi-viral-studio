@@ -33,7 +33,7 @@ def gemini(prompt):
     import urllib.request
     key=os.getenv("GEMINI_API_KEY")
     if not key: raise RuntimeError("GEMINI_API_KEY environment variable missing.")
-    url="https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key="+key
+    url="https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key="+key
     body={"contents":[{"parts":[{"text":prompt}]}],"generationConfig":{"temperature":0.7,"maxOutputTokens":2200}}
     req=urllib.request.Request(url,data=json.dumps(body).encode(),headers={"Content-Type":"application/json"},method="POST")
     with urllib.request.urlopen(req,timeout=90) as r: result=json.loads(r.read().decode())
