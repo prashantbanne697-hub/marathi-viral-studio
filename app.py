@@ -7,7 +7,8 @@ ROOT=Path(__file__).resolve().parent
 DATA=ROOT/"data"/"projects.json"
 LOCK=threading.Lock()
 app=Flask(__name__)
-
+from image_generator import image_bp
+app.register_blueprint(image_bp)
 def load():
     if not DATA.exists(): return []
     try: return json.loads(DATA.read_text(encoding="utf-8"))
