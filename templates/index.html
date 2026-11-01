@@ -55,4 +55,7 @@ async function research(){try{msg('Researching topics...');let r=await api('/api
 function useTopic(t){document.getElementById('topic').value=decodeURIComponent(t);window.scrollTo({top:0,behavior:'smooth'})}
 async function analytics(){try{msg('Reading public channel stats...');let r=await api('/api/analytics',{channel_id:document.getElementById('channel').value});document.getElementById('analyticsOut').innerHTML=`<b>${esc(r.report.channel)}</b><p>Subscribers: ${esc(r.report.subscriber_count)} • Channel views: ${esc(r.report.channel_views)} • Videos: ${r.report.video_count}</p><pre>${esc(JSON.stringify(r.report.top_5,null,2))}</pre>`;msg('Analytics report ready.')}catch(e){msg(e.message)}}
 refresh();
-</script></body></html>
+</script>
+<script src="/static/mvs_image_generator.js"></script>
+</body>
+</html></body></html>
