@@ -34,7 +34,7 @@ def generate_scene_image():
         "model": "gemini-nano-banana-2.1",
         "input": [{"type": "text", "text": prompt + "\nCreate one polished vertical 9:16 image for a Marathi YouTube Short. No collage."}],
         "response_format": {
-            "type": "image", "mime_type": "image/png",
+            "type": "image", "mime_type": "image/jpeg",
             "aspect_ratio": "9:16", "image_size": "1K"
         }
     }
@@ -52,7 +52,7 @@ def generate_scene_image():
             raise RuntimeError(result.get("error", {}).get("message", "Gemini ने image परत दिली नाही."))
         folder = ROOT / "generated_images" / pid
         folder.mkdir(parents=True, exist_ok=True)
-        name = f"scene_{int(scene):02d}.png"
+        name = f"scene_{int(scene):02d}.jpg"
         (folder / name).write_bytes(base64.b64decode(data))
         return jsonify(ok=True, scene=int(scene), url=f"/generated/{pid}/{name}")
 
@@ -68,7 +68,7 @@ def list_scene_images(pid):
     if not project_exists(pid):
         return jsonify(error="Project not found."), 404
     folder = ROOT / "generated_images" / pid
-    files = sorted(folder.glob("scene_*.png")) if folder.exists() else []
+    files = sorted(folder.glob("scene_*.jpg")) if folder.exists() else []
     return jsonify(images=[{"name": f.name, "url": f"/generated/{pid}/{f.name}"} for f in files])
 
 
