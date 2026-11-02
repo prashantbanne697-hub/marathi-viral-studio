@@ -29,79 +29,49 @@ def generate_scene_image():
     key = os.getenv("GEMINI_API_KEY")
     if not key:
         return jsonify(error="Render Environment मध्ये GEMINI_API_KEY उपलब्ध नाही."), 500
+
     payload = {
-    "model": "gemini-nano-banana-2.1",
-    "input": [
-        {
-            "type": "text",
-            "text": prompt + "\nCreate one polished vertical 9:16 image for a Marathi YouTube Short. No collage."
+        "model": "gemini-nano-banana-2.1",
+        "input": [{"type": "text", "text": prompt + "\nCreate one polished vertical 9:16 image for a Marathi YouTube Short. No collage."}],
+        "response_format": {
+            "type": "image", "mime_type": "image/png",
+            "aspect_ratio": "9:16", "image_size": "1K"
         }
-    ],
-    "response_format": {
-        "type": "image",
-        "mime_type": "image/png",
-        "aspect_ratio": "9:16",
-        "image_size": "1K"
-    }
     }
     req = urllib.request.Request(
         "https://generativelanguage.googleapis.com/v1beta/interactions",
         data=json.dumps(payload).encode("utf-8"),
-        headers={"Content-Type":"application/json","x-goog-api-key":key}, method="POST")
+        headers={"Content-Type": "application/json", "x-goog-api-key": key},
+        method="POST"
+    )
     try:
-        with urllib.request.urlopen(req, timeout=240) as r:
-            result = json.loads(r.read().decode("utf-8"))
+        with urllib.request.urlopen(req, timeout=240) as response:
+            result = json.loads(response.read().decode("utf-8"))
         data = (result.get("output_image") or {}).get("data")
         if not data:
-            raise RuntimeError(result.get("error",{}).get("message","Gemini ने image परत दिली नाही."))
-        folder = ROOT/"generated_images"/pid
+            raise RuntimeError(result.get("error", {}).get("message", "Gemini ने image परत दिली नाही."))
+        folder = ROOT / "generated_images" / pid
         folder.mkdir(parents=True, exist_ok=True)
         name = f"scene_{int(scene):02d}.png"
-        (folder/name).write_bytes(base64.b64decode(data))
-            return jsonify(ok=True, 
-    scene=int(scene), url=f"/
-    generated/{pid}/{name}")
+        (folder / name).write_bytes(base64.b64decode(data))
+        return jsonify(ok=True, scene=int(scene), url=f"/generated/{pid}/{name}")
 
-        except 
-    urllib.error.HTTPError as e:
-        detail = 
-    e.read().decode("utf-8",
-    errors="replace")
-           return 
-    jsonify(error=detail[:2000]), 
-    502
-
+    except urllib.error.HTTPError as e:
+        detail = e.read().decode("utf-8", errors="replace")
+        return jsonify(error=detail[:2000]), 502
     except Exception as e:
-        return 
-    jsonify(error=str(e)[:1200]), 
-    502 
-    
-    
-        
-   
-           
-    
-   
-            
-    
-    
+        return jsonify(error=str(e)[:1200]), 502
 
-       
-    
-       
-        
-     
-        
 
 @image_bp.get("/api/image/list/<pid>")
 def list_scene_images(pid):
     if not project_exists(pid):
         return jsonify(error="Project not found."), 404
-    folder = ROOT/"generated_images"/pid
+    folder = ROOT / "generated_images" / pid
     files = sorted(folder.glob("scene_*.png")) if folder.exists() else []
-    return jsonify(images=[{"name":f.name,"url":f"/generated/{pid}/{f.name}"} for f in files])
+    return jsonify(images=[{"name": f.name, "url": f"/generated/{pid}/{f.name}"} for f in files])
+
 
 @image_bp.get("/generated/<pid>/<path:name>")
 def serve_generated_image(pid, name):
-    return send_from_directory(ROOT/"generated_images"/pid, name)
-
+    return send_from_directory(ROOT / "generated_images" / pid, name)￼Enter
