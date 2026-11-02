@@ -29,9 +29,19 @@ def generate_scene_image():
     if not key:
         return jsonify(error="Render Environment मध्ये GEMINI_API_KEY उपलब्ध नाही."), 500
     payload = {
-        "model": "gemini-nano-banana-2.1",
-        "input": prompt + "\\nCreate one polished vertical 9:16 image for a Marathi YouTube Short. No collage.",
-        "response_format": {"type":"image","mime_type":"image/png","aspect_ratio":"9:16","image_size":"1K"}
+    "model": "gemini-nano-banana-2.1",
+    "input": [
+        {
+            "type": "text",
+            "text": prompt + "\nCreate one polished vertical 9:16 image for a Marathi YouTube Short. No collage."
+        }
+    ],
+    "response_format": {
+        "type": "image",
+        "mime_type": "image/png",
+        "aspect_ratio": "9:16",
+        "image_size": "1K"
+    }
     }
     req = urllib.request.Request(
         "https://generativelanguage.googleapis.com/v1beta/interactions",
