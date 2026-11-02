@@ -59,11 +59,14 @@ def generate_scene_image():
         name = f"scene_{int(scene):02d}.png"
         (folder/name).write_bytes(base64.b64decode(data))
         return jsonify(ok=True, scene=int(scene), url=f"/generated/{pid}/{name}")
-        except urllib.error.HTTPError as e:
+            except urllib.error.HTTPError as e:
         detail = e.read().decode("utf-8", errors="replace")
         return jsonify(error=detail[:2000]), 502
     except Exception as e:
         return jsonify(error=str(e)[:1200]), 502
+       
+        
+     
         
 
 @image_bp.get("/api/image/list/<pid>")
