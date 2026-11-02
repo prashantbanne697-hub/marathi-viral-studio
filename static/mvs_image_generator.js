@@ -17,4 +17,4 @@
  };
  panel.querySelector('#mvs-load-images').onclick=load;
  document.getElementById('project')?.addEventListener('change',load);
-})();\n
+})();
