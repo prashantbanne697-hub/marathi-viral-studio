@@ -61,4 +61,4 @@ def list_scene_images(pid):
 
 @image_bp.get("/generated/<pid>/<path:name>")
 def serve_generated_image(pid, name):
-    return send_from_directory(ROOT/"generated_images"/pid, name)\n
+    return send_from_directory(ROOT/"generated_images"/pid, name)
