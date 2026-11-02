@@ -62,7 +62,7 @@ def generate_scene_image():
             except urllib.error.HTTPError as e:
         detail = e.read().decode("utf-8", errors="replace")
         return jsonify(error=detail[:2000]), 502
-    except Exception as e:
+            except Exception as e:
         return jsonify(error=str(e)[:1200]), 502
        
         
@@ -80,3 +80,4 @@ def list_scene_images(pid):
 @image_bp.get("/generated/<pid>/<path:name>")
 def serve_generated_image(pid, name):
     return send_from_directory(ROOT/"generated_images"/pid, name)
+
