@@ -75,7 +75,9 @@ def agent(agent):
         field="caption"
     else: return jsonify(error="Unknown agent"),400
     try: output=gemini(prompt)
-    except Exception as e: return jsonify(error=str(e)),500
+    except Exception as e:import traceback
+    traceback.print_exc()
+     return jsonify(error=str(e)),500
     update(p["id"],**{field:output,"status":agent.upper()+" READY","approved":False})
     return jsonify(output=output)
 
