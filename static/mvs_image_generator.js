@@ -4,16 +4,16 @@
  document.head.appendChild(css);
  const workspace=document.getElementById('workspace'); if(!workspace)return;
  const panel=document.createElement('section'); panel.id='mvs-image-panel';
- panel.innerHTML='<h2>🖼️ AI Scene Image Generator</h2><p class="small">Gemini Nano Banana 2.1 • Vertical 9:16</p><label class="small">Scene Number</label><input id="mvs-scene-no" type="number" min="1" max="20" value="1"><label class="small">Scene Image Prompt</label><textarea id="mvs-image-prompt" placeholder="Scene Agent मधील एका सीनचा visual prompt paste करा..."></textarea><button id="mvs-gen-one">Generate Scene Image</button><button id="mvs-load-images">Refresh Gallery</button><div id="mvs-image-status"></div><div id="mvs-image-gallery"></div>';
+ panel.innerHTML='<h2>🖼️ AI Scene Image Generator</h2><p class="small">Gemini image generation • Vertical 9:16</p><label class="small">Scene Number</label><input id="mvs-scene-no" type="number" min="1" max="20" value="1"><label class="small">Misses Reference Photo (JPG/PNG/WEBP)</label><input id="mvs-reference" type="file" accept="image/jpeg,image/png,image/webp"><label class="small">Scene Image Prompt</label><textarea id="mvs-image-prompt" placeholder="Scene Agent मधील एका सीनचा visual prompt paste करा..."></textarea><button id="mvs-gen-one">Generate Scene Image</button><button id="mvs-load-images">Refresh Gallery</button><div id="mvs-image-status"></div><div id="mvs-image-gallery"></div>';
  workspace.parentNode.insertBefore(panel,workspace.nextSibling);
  const status=panel.querySelector('#mvs-image-status'), gallery=panel.querySelector('#mvs-image-gallery');
  const pid=()=>document.getElementById('project')?.value||'';
  async function load(){if(!pid()){status.textContent='आधी project निवडा.';return}try{const r=await fetch('/api/image/list/'+encodeURIComponent(pid()));const j=await r.json();gallery.innerHTML=(j.images||[]).map(x=>'<a href="'+x.url+'" target="_blank"><img src="'+x.url+'" alt="'+x.name+'"><div class="small">'+x.name+'</div></a>').join('')}catch(e){status.textContent=e.message}}
  panel.querySelector('#mvs-gen-one').onclick=async()=>{
-  const prompt=panel.querySelector('#mvs-image-prompt').value.trim(), scene=panel.querySelector('#mvs-scene-no').value;
+  const prompt=panel.querySelector('#mvs-image-prompt').value.trim(), scene=panel.querySelector('#mvs-scene-no').value, file=panel.querySelector('#mvs-reference').files[0];
   if(!pid()){status.textContent='आधी project निवडा.';return} if(!prompt){status.textContent='Scene prompt लिहा किंवा paste करा.';return}
   status.textContent='Image तयार होत आहे... थोडा वेळ थांबा.';
-  try{const r=await fetch('/api/image/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:pid(),prompt,scene})});const j=await r.json();if(!r.ok)throw Error(j.error||'Image generation failed');status.textContent='Scene '+j.scene+' image तयार झाली.';await load()}catch(e){status.textContent=e.message}
+  try{let reference_image=null,reference_mime_type=null;if(file){if(file.size>8*1024*1024)throw Error('Reference photo 8 MB पेक्षा लहान ठेवा.');reference_mime_type=file.type;reference_image=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result).split(',')[1]);reader.onerror=()=>reject(Error('Photo वाचता आली नाही.'));reader.readAsDataURL(file)})}const r=await fetch('/api/image/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:pid(),prompt,scene,reference_image,reference_mime_type})});const j=await r.json();if(!r.ok)throw Error(j.error||'Image generation failed');status.textContent='Scene '+j.scene+' image तयार झाली.';await load()}catch(e){status.textContent=e.message}
  };
  panel.querySelector('#mvs-load-images').onclick=load;
  document.getElementById('project')?.addEventListener('change',load);
