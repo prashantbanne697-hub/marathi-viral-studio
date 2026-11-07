@@ -26,13 +26,13 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#081321;border-radius
 <section class="card"><h2>🤖 AI Agent Control</h2><select id="project" onchange="showProject()"><option value="">Select project</option></select>
 <button onclick="agent('script')">① Script Agent</button><button class="alt" onclick="agent('scenes')">② Scene Agent</button><button onclick="agent('caption')">③ Caption Agent</button>
 <div class="small">Gemini API key required. Run in sequence.</div></section>
-<section class="card"><h2>🔍 Topic Research Agent</h2><input id="niche" value="Google Flow, AI video, Marathi tutorials"><input id="count" type="number" value="8" min="1" max="20">
+<section class="card"><h2>📸 Instagram Reels Automation</h2><div id="ig-status" class="small">Checking connection…</div><button class="wide alt" onclick="connectInstagram()">Connect Instagram Professional</button><button class="wide" onclick="publishInstagram()">Publish Approved Reel</button><div class="small">Meta App credentials + Creator/Business account required.</div></section><section class="card"><h2>🔍 Topic Research Agent</h2><input id="niche" value="Google Flow, AI video, Marathi tutorials"><input id="count" type="number" value="8" min="1" max="20">
 <button class="wide alt" onclick="research()">Research Topics</button><div id="topics" class="small">Topic suggestions appear here.</div></section>
 <section class="card"><h2>📊 YouTube Analytics Agent</h2><input id="channel" placeholder="YouTube Channel ID">
 <button class="wide" onclick="analytics()">Analyze Public Channel Data</button><div id="analyticsOut" class="small">Public views, likes and comments report.</div></section>
 </div>
 <section class="card" style="margin-top:15px"><h2>🎬 Production Workspace</h2><div id="msg">Select or create a project.</div><div id="workspace" class="muted">No project selected.</div>
-<div style="margin-top:12px"><button class="warn" onclick="approve(true)">Approve Production</button><button class="alt" onclick="approve(false)">Request Changes</button><button onclick="renderVideo()">Render Final Video</button><button onclick="upload()">Upload to YouTube</button></div>
+<div style="margin-top:12px"><button class="warn" onclick="approve(true)">Approve Production</button><button class="alt" onclick="approve(false)">Request Changes</button><button onclick="renderVideo()">Render Final Video</button><button onclick="upload()">Upload to YouTube</button><button class="alt" onclick="showDemo()">Demo Preview</button></div>
 <div id="preview" style="margin-top:12px"></div></section>
 <section class="card" style="margin-top:15px"><h2>📁 Production History</h2><div id="history" class="muted">Loading...</div></section>
 <p class="small" style="text-align:center;margin:20px 0">Review all scripts, scenes and final video before publishing. Upload defaults to PRIVATE. API quotas and cloud/worker costs may apply.</p>
@@ -54,7 +54,11 @@ async function upload(){if(!active)return msg('Select project first.');try{let p
 async function research(){try{msg('Researching topics...');let r=await api('/api/topics',{niche:document.getElementById('niche').value,count:document.getElementById('count').value});document.getElementById('topics').innerHTML=r.ideas.map((x,i)=>`<div class="item"><b>${i+1}. ${esc(x.topic)}</b><div>${esc(x.hook)}</div><button onclick="useTopic('${encodeURIComponent(x.topic)}')">Use this topic</button></div>`).join('');msg('Topic research complete. Review suggestions.')}catch(e){msg(e.message)}}
 function useTopic(t){document.getElementById('topic').value=decodeURIComponent(t);window.scrollTo({top:0,behavior:'smooth'})}
 async function analytics(){try{msg('Reading public channel stats...');let r=await api('/api/analytics',{channel_id:document.getElementById('channel').value});document.getElementById('analyticsOut').innerHTML=`<b>${esc(r.report.channel)}</b><p>Subscribers: ${esc(r.report.subscriber_count)} • Channel views: ${esc(r.report.channel_views)} • Videos: ${r.report.video_count}</p><pre>${esc(JSON.stringify(r.report.top_5,null,2))}</pre>`;msg('Analytics report ready.')}catch(e){msg(e.message)}}
-refresh();
+async function instagramStatus(){try{const r=await fetch('/api/instagram/status');const j=await r.json();document.getElementById('ig-status').textContent=j.connected?'Connected: @'+(j.username||'Instagram'):'Not connected. '+j.message}catch(e){document.getElementById('ig-status').textContent='Instagram status unavailable.'}}
+function connectInstagram(){location.href='/instagram/connect'}
+async function publishInstagram(){if(!active)return msg('Select project first.');try{msg('Publishing Reel…');const r=await api('/api/instagram/publish',{id:active});msg(r.status);await refresh()}catch(e){msg(e.message)}}
+function showDemo(){const labels=['Misses intro','Robot comedy','AI tutorial','Robot hero pose','Subscribe'];document.getElementById('preview').innerHTML='<div class="card"><h2>DEMO STORYBOARD PREVIEW</h2><p class="small">Illustrative preview only — not a rendered MP4.</p><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px">'+labels.map((x,i)=>'<div style="aspect-ratio:9/16;background:linear-gradient(145deg,#172943,#533d86);border:1px solid #8b9cff;border-radius:12px;padding:10px;display:flex;flex-direction:column;justify-content:space-between"><b>Scene '+(i+1)+'</b><span>'+x+'</span><small>MARATHI VIRAL STUDIO</small></div>').join('')+'</div></div>'}
+refresh();instagramStatus();
 </script>
 <script src="/static/mvs_image_generator.js"></script>
 </body>
