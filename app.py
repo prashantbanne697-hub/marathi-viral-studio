@@ -7,6 +7,9 @@ ROOT=Path(__file__).resolve().parent
 DATA=ROOT/"data"/"projects.json"
 LOCK=threading.Lock()
 app=Flask(__name__)
+app.secret_key=os.getenv("FLASK_SECRET_KEY") or os.getenv("SECRET_KEY") or "CHANGE-ME-BEFORE-INSTAGRAM-OAUTH"
+from instagram_api import instagram_bp
+app.register_blueprint(instagram_bp)
 from image_generator import image_bp
 app.register_blueprint(image_bp)
 def load():
