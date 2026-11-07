@@ -20,6 +20,8 @@ def generate_scene_image():
     d = request.get_json(silent=True) or {}
     pid, prompt = str(d.get("id", "")).strip(), str(d.get("prompt", "")).strip()
     scene = str(d.get("scene", "1")).strip()
+    reference = d.get("reference_image")
+    mime_type = str(d.get("reference_mime_type", "image/jpeg"))
     if not project_exists(pid):
         return jsonify(error="Project not found. आधी project तयार करा."), 404
     if not prompt:
@@ -30,54 +32,64 @@ def generate_scene_image():
     if not key:
         return jsonify(error="Render Environment मध्ये GEMINI_API_KEY उपलब्ध नाही."), 500
 
-    # Free fallback image provider: Pollinations legacy image endpoint.
-    # It does not use or expose the user's Gemini API key.
-    from urllib.parse import quote
-    import time
-
     image_prompt = prompt + (
         "\\nCreate one polished vertical 9:16 image for a Marathi YouTube Short. "
-        "Professional cinematic composition, clean details, no collage, no text artifacts."
+        "If a reference person image is supplied, use that same person's identity and facial features; "
+        "do not substitute a different person. Preserve recognizable face and hairstyle. "
+        "Professional cinematic office studio, clean details, no collage, no added text or watermark."
     )
-    encoded_prompt = quote(image_prompt, safe="")
-    url = (
-        "https://image.pollinations.ai/prompt/" + encoded_prompt
-        + "?width=768&height=1365&seed=" + str(int(scene) * 137)
-        + "&nologo=true"
-    )
-
     try:
-        image_bytes = None
-        last_error = None
-        for attempt in range(3):
+        inputs = [{"type": "text", "text": image_prompt}]
+        if reference:
+            if mime_type not in ("image/jpeg", "image/png", "image/webp"):
+                return jsonify(error="Reference photo JPG, PNG किंवा WEBP असावी."), 400
             try:
-                req = urllib.request.Request(
-                    url,
-                    headers={"User-Agent": "MarathiViralStudio/1.0", "Accept": "image/*"},
-                    method="GET"
-                )
-                with urllib.request.urlopen(req, timeout=180) as response:
-                    content_type = response.headers.get("Content-Type", "")
-                    image_bytes = response.read()
-                if not content_type.startswith("image/") or not image_bytes:
-                    raise RuntimeError("Free image provider returned an invalid image response.")
-                break
-            except Exception as e:
-                last_error = e
-                if attempt < 2:
-                    time.sleep(4 * (attempt + 1))
-        if not image_bytes:
-            raise RuntimeError(f"Free image generation failed: {last_error}")
+                raw = base64.b64decode(reference, validate=True)
+            except Exception:
+                return jsonify(error="Reference photo data वाचता आली नाही."), 400
+            if len(raw) > 8 * 1024 * 1024:
+                return jsonify(error="Reference photo 8 MB पेक्षा लहान ठेवा."), 413
+            inputs.append({"type": "image", "mime_type": mime_type, "data": base64.b64encode(raw).decode("ascii")})
 
+        payload = json.dumps({
+            "model": "gemini-3.1-flash-image",
+            "input": inputs,
+            "response_format": {"type": "image", "aspect_ratio": "9:16"}
+        }).encode("utf-8")
+        req = urllib.request.Request(
+            "https://generativelanguage.googleapis.com/v1beta/interactions",
+            data=payload,
+            headers={"Content-Type": "application/json", "x-goog-api-key": key},
+            method="POST"
+        )
+        with urllib.request.urlopen(req, timeout=240) as response:
+            result = json.loads(response.read().decode("utf-8"))
+
+        image_data = result.get("output_image", {}).get("data")
+        if not image_data:
+            for step in result.get("steps", []):
+                if step.get("type") == "model_output":
+                    for block in step.get("content", []):
+                        if block.get("type") == "image" and block.get("data"):
+                            image_data = block["data"]
+                            break
+                if image_data:
+                    break
+        if not image_data:
+            raise RuntimeError("Gemini ने image परत केली नाही. API response मध्ये image output नाही.")
+
+        image_bytes = base64.b64decode(image_data)
         folder = ROOT / "generated_images" / pid
         folder.mkdir(parents=True, exist_ok=True)
-        name = f"scene_{int(scene):02d}.jpg"
+        name = f"scene_{int(scene):02d}.png"
         (folder / name).write_bytes(image_bytes)
-        return jsonify(ok=True, scene=int(scene), url=f"/generated/{pid}/{name}", provider="Pollinations (free fallback)")
+        return jsonify(ok=True, scene=int(scene), url=f"/generated/{pid}/{name}", provider="Gemini 3.1 Flash Image")
 
+    except urllib.error.HTTPError as e:
+        detail = e.read().decode("utf-8", errors="replace")[:700]
+        return jsonify(error=f"Gemini API error ({e.code}): {detail}"), 502
     except Exception as e:
-        return jsonify(error=f"Free image provider unavailable: {str(e)[:1000]}"), 502
-
+        return jsonify(error=f"Image generation failed: {str(e)[:700]}"), 502
 
 
 @image_bp.get("/api/image/list/<pid>")
@@ -85,7 +97,7 @@ def list_scene_images(pid):
     if not project_exists(pid):
         return jsonify(error="Project not found."), 404
     folder = ROOT / "generated_images" / pid
-    files = sorted(folder.glob("scene_*.jpg")) if folder.exists() else []
+    files = sorted(list(folder.glob("scene_*.jpg")) + list(folder.glob("scene_*.png"))) if folder.exists() else []
     return jsonify(images=[{"name": f.name, "url": f"/generated/{pid}/{f.name}"} for f in files])
 
 
