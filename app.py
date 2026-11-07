@@ -1,4 +1,4 @@
-import os, json, uuid, subprocess, sys, threading
+import os, json, uuid, subprocess, sys, threading, time
 from datetime import datetime
 from pathlib import Path
 from flask import Flask, render_template, request, jsonify, send_from_directory
@@ -37,8 +37,22 @@ def gemini(prompt):
     url="https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key="+key
     body={"contents":[{"parts":[{"text":prompt}]}],"generationConfig":{"temperature":0.7,"maxOutputTokens":2200}}
     req=urllib.request.Request(url,data=json.dumps(body).encode(),headers={"Content-Type":"application/json"},method="POST")
-    with urllib.request.urlopen(req,timeout=180) as r: result=json.loads(r.read().decode())
-    return "".join(x.get("text","") for x in result["candidates"][0]["content"]["parts"]).strip()
+    last_error=None
+    for attempt, delay in enumerate((0, 3, 8, 15), start=1):
+        if delay: time.sleep(delay)
+        try:
+            with urllib.request.urlopen(req,timeout=180) as response:
+                result=json.loads(response.read().decode())
+            return "".join(x.get("text","") for x in result["candidates"][0]["content"]["parts"]).strip()
+        except urllib.error.HTTPError as e:
+            error_body=e.read().decode("utf-8","replace")
+            last_error=RuntimeError(f"Gemini API HTTP {e.code}: {error_body[:1200]}")
+            if e.code not in (429, 500, 502, 503, 504) or attempt == 4:
+                raise last_error from e
+        except (urllib.error.URLError, TimeoutError) as e:
+            last_error=e
+            if attempt == 4: raise
+    raise RuntimeError(f"Gemini API request failed after retries: {last_error}")
 
 @app.get("/")
 def home(): return render_template("index.html")
