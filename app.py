@@ -94,7 +94,14 @@ def agent(agent):
         import traceback
         traceback.print_exc()
         return jsonify(error=str(e)),500
-    update(p["id"],**{field:output,"status":agent.upper()+" READY","approved":False})
+    try:
+        saved=update(p["id"],**{field:output,"status":agent.upper()+" READY","approved":False})
+        if not saved:
+            return jsonify(error="Project could not be saved. Please refresh the project list and retry."),500
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify(error=f"Agent generated output but saving failed: {type(e).__name__}: {e}"),500
     return jsonify(output=output)
 
 @app.post("/api/approve")
