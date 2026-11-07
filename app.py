@@ -34,25 +34,46 @@ def gemini(prompt):
     import urllib.request
     key=os.getenv("GEMINI_API_KEY")
     if not key: raise RuntimeError("GEMINI_API_KEY environment variable missing.")
-    url="https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key="+key
-    body={"contents":[{"parts":[{"text":prompt}]}],"generationConfig":{"temperature":0.7,"maxOutputTokens":2200}}
-    req=urllib.request.Request(url,data=json.dumps(body).encode(),headers={"Content-Type":"application/json"},method="POST")
-    last_error=None
-    for attempt, delay in enumerate((0, 3, 8, 15), start=1):
-        if delay: time.sleep(delay)
-        try:
-            with urllib.request.urlopen(req,timeout=180) as response:
-                result=json.loads(response.read().decode())
-            return "".join(x.get("text","") for x in result["candidates"][0]["content"]["parts"]).strip()
-        except urllib.error.HTTPError as e:
-            error_body=e.read().decode("utf-8","replace")
-            last_error=RuntimeError(f"Gemini API HTTP {e.code}: {error_body[:1200]}")
-            if e.code not in (429, 500, 502, 503, 504) or attempt == 4:
-                raise last_error from e
-        except (urllib.error.URLError, TimeoutError) as e:
-            last_error=e
-            if attempt == 4: raise
-    raise RuntimeError(f"Gemini API request failed after retries: {last_error}")
+
+    # Automatically try another currently supported Flash model during temporary overload.
+    models=("gemini-3.8-flash","gemini-3.5-flash-lite","gemini-3.6-flash")
+    transient_codes=(429,500,502,503,504)
+    errors=[]
+
+    for model in models:
+        url=f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key="+key
+        body={"contents":[{"parts":[{"text":prompt}]}],"generationConfig":{"temperature":0.7,"maxOutputTokens":2200}}
+        req=urllib.request.Request(url,data=json.dumps(body).encode(),headers={"Content-Type":"application/json"},method="POST")
+
+        for attempt, delay in enumerate((0,4), start=1):
+            if delay: time.sleep(delay)
+            try:
+                with urllib.request.urlopen(req,timeout=180) as response:
+                    result=json.loads(response.read().decode())
+                candidates=result.get("candidates") or []
+                if not candidates:
+                    raise RuntimeError(f"{model} returned no candidates: {json.dumps(result)[:1000]}")
+                parts=candidates[0].get("content",{}).get("parts",[])
+                output="".join(x.get("text","") for x in parts).strip()
+                if not output:
+                    raise RuntimeError(f"{model} returned an empty response.")
+                return output
+            except urllib.error.HTTPError as e:
+                error_body=e.read().decode("utf-8","replace")
+                message=f"{model} HTTP {e.code}: {error_body[:900]}"
+                errors.append(message)
+                if e.code not in transient_codes:
+                    raise RuntimeError(message) from e
+                break
+            except (urllib.error.URLError, TimeoutError) as e:
+                errors.append(f"{model}: {e}")
+                if attempt == 2:
+                    break
+            except Exception as e:
+                errors.append(f"{model}: {type(e).__name__}: {e}")
+                break
+
+    raise RuntimeError("All Gemini fallback models are temporarily unavailable. " + " | ".join(errors[-3:]))
 
 @app.get("/")
 def home(): return render_template("index.html")
