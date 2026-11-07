@@ -30,37 +30,54 @@ def generate_scene_image():
     if not key:
         return jsonify(error="Render Environment मध्ये GEMINI_API_KEY उपलब्ध नाही."), 500
 
-    payload = {
-        "model": "gemini-nano-banana-2.1",
-        "input": [{"type": "text", "text": prompt + "\nCreate one polished vertical 9:16 image for a Marathi YouTube Short. No collage."}],
-        "response_format": {
-            "type": "image", "mime_type": "image/jpeg",
-            "aspect_ratio": "9:16", "image_size": "1K"
-        }
-    }
-    req = urllib.request.Request(
-        "https://generativelanguage.googleapis.com/v1beta/interactions",
-        data=json.dumps(payload).encode("utf-8"),
-        headers={"Content-Type": "application/json", "x-goog-api-key": key},
-        method="POST"
+    # Free fallback image provider: Pollinations legacy image endpoint.
+    # It does not use or expose the user's Gemini API key.
+    from urllib.parse import quote
+    import time
+
+    image_prompt = prompt + (
+        "\\nCreate one polished vertical 9:16 image for a Marathi YouTube Short. "
+        "Professional cinematic composition, clean details, no collage, no text artifacts."
     )
+    encoded_prompt = quote(image_prompt, safe="")
+    url = (
+        "https://image.pollinations.ai/prompt/" + encoded_prompt
+        + "?width=768&height=1365&seed=" + str(int(scene) * 137)
+        + "&nologo=true"
+    )
+
     try:
-        with urllib.request.urlopen(req, timeout=240) as response:
-            result = json.loads(response.read().decode("utf-8"))
-        data = (result.get("output_image") or {}).get("data")
-        if not data:
-            raise RuntimeError(result.get("error", {}).get("message", "Gemini ने image परत दिली नाही."))
+        image_bytes = None
+        last_error = None
+        for attempt in range(3):
+            try:
+                req = urllib.request.Request(
+                    url,
+                    headers={"User-Agent": "MarathiViralStudio/1.0", "Accept": "image/*"},
+                    method="GET"
+                )
+                with urllib.request.urlopen(req, timeout=180) as response:
+                    content_type = response.headers.get("Content-Type", "")
+                    image_bytes = response.read()
+                if not content_type.startswith("image/") or not image_bytes:
+                    raise RuntimeError("Free image provider returned an invalid image response.")
+                break
+            except Exception as e:
+                last_error = e
+                if attempt < 2:
+                    time.sleep(4 * (attempt + 1))
+        if not image_bytes:
+            raise RuntimeError(f"Free image generation failed: {last_error}")
+
         folder = ROOT / "generated_images" / pid
         folder.mkdir(parents=True, exist_ok=True)
         name = f"scene_{int(scene):02d}.jpg"
-        (folder / name).write_bytes(base64.b64decode(data))
-        return jsonify(ok=True, scene=int(scene), url=f"/generated/{pid}/{name}")
+        (folder / name).write_bytes(image_bytes)
+        return jsonify(ok=True, scene=int(scene), url=f"/generated/{pid}/{name}", provider="Pollinations (free fallback)")
 
-    except urllib.error.HTTPError as e:
-        detail = e.read().decode("utf-8", errors="replace")
-        return jsonify(error=detail[:2000]), 502
     except Exception as e:
-        return jsonify(error=str(e)[:1200]), 502
+        return jsonify(error=f"Free image provider unavailable: {str(e)[:1000]}"), 502
+
 
 
 @image_bp.get("/api/image/list/<pid>")
