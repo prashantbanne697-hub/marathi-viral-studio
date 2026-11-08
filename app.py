@@ -172,12 +172,20 @@ def voice_test():
     voice_dir.mkdir(parents=True,exist_ok=True)
     output_dir.mkdir(parents=True,exist_ok=True)
     filename=f"voice_test_{speaker}.wav"
+    model_path=voice_dir/"mr_IN-google-medium.onnx"
     try:
+        if not model_path.exists() or not Path(str(model_path)+".json").exists():
+            download=subprocess.run(
+                [sys.executable,"-m","piper.download_voices","--data-dir",str(voice_dir),"mr_IN-google-medium"],
+                cwd=ROOT,capture_output=True,text=True,timeout=240
+            )
+            if download.returncode:
+                return jsonify(error=("Piper model download failed: "+(download.stderr or download.stdout)[-1200:])),500
         result=subprocess.run(
-            [sys.executable,"-m","piper","--model","mr_IN-google-medium",
+            [sys.executable,"-m","piper","--model",str(model_path),
              "--speaker",str(speaker),"--output_file",str(output_dir/filename),
-             "--download-dir",str(voice_dir)],
-            input=text,cwd=ROOT,capture_output=True,text=True,timeout=180
+             "--data-dir",str(voice_dir),"--",text],
+            cwd=ROOT,capture_output=True,text=True,timeout=180
         )
         if result.returncode:
             return jsonify(error=("Piper voice generation failed: "+(result.stderr or result.stdout)[-1200:])),500
