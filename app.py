@@ -152,6 +152,43 @@ def render_video():
     except subprocess.CalledProcessError as e:
         return jsonify(error=(e.stderr or e.stdout)[-1800:]),500
 
+
+@app.post("/api/voice-test")
+def voice_test():
+    d=request.json or {}
+    text=(d.get("text") or "").strip()
+    try:
+        speaker=int(d.get("speaker",0))
+    except (TypeError,ValueError):
+        return jsonify(error="Invalid speaker ID."),400
+    if not text:
+        return jsonify(error="Please enter a Marathi sample sentence."),400
+    if len(text)>350:
+        return jsonify(error="Keep the sample under 350 characters."),400
+    if speaker<0 or speaker>8:
+        return jsonify(error="Choose speaker ID 0 to 8."),400
+    voice_dir=ROOT/"data"/"piper-voices"
+    output_dir=ROOT/"output"
+    voice_dir.mkdir(parents=True,exist_ok=True)
+    output_dir.mkdir(parents=True,exist_ok=True)
+    filename=f"voice_test_{speaker}.wav"
+    try:
+        result=subprocess.run(
+            [sys.executable,"-m","piper","--model","mr_IN-google-medium",
+             "--speaker",str(speaker),"--output_file",str(output_dir/filename),
+             "--download-dir",str(voice_dir)],
+            input=text,cwd=ROOT,capture_output=True,text=True,timeout=180
+        )
+        if result.returncode:
+            return jsonify(error=("Piper voice generation failed: "+(result.stderr or result.stdout)[-1200:])),500
+        if not (output_dir/filename).exists():
+            return jsonify(error="Piper did not create the audio file."),500
+        return jsonify(ok=True,audio="/video/"+filename,speaker=speaker)
+    except subprocess.TimeoutExpired:
+        return jsonify(error="Voice generation timed out. Try a shorter sentence."),504
+    except Exception as e:
+        return jsonify(error=f"{type(e).__name__}: {e}"),500
+
 @app.get("/video/<path:name>")
 def video(name): return send_from_directory(ROOT/"output",name)
 
